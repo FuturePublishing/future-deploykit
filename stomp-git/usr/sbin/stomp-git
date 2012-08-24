@@ -1,0 +1,152 @@
+#!/usr/bin/ruby 
+
+require 'rubygems'
+require 'yaml'
+require 'systemu'
+require 'stomp'
+require 'syslog'
+require 'optparse'
+require 'socket'
+ 
+options = {}
+
+optparse = OptionParser.new do|opts|
+  opts.banner = "Usage: stomp-git.rb [options]"
+ 
+  options[:debug] = false
+  opts.on( '-d', '--debug', 'Much output, do not detach' ) do
+    options[:debug] = true
+  end
+ 
+  options[:pm] = false
+  opts.on( '-p', '--puppetmaster', 'Magic puppetmaster mode' ) do
+    options[:pm] = true
+  end
+
+  options[:configfile] = "/etc/stomp-git/stomp-git.yaml"
+  opts.on( '-c', '--config FILE', 'Config is FILE' ) do|file|
+    options[:configfile] = file
+  end
+ 
+  opts.on( '-h', '--help', 'Display this screen' ) do
+    puts opts
+        exit
+  end
+end
+
+optparse.parse!
+
+host_name = Socket::gethostname
+
+if !options[:debug]
+  pid = Process.fork
+else
+  pid = nil
+  puts "DEBUG"
+  puts "CONFIGFILE: #{options[:configfile]}"
+  puts "PUPPETMASTER" if options[:pm]
+end
+
+if pid.nil?
+  Signal.trap("TERM") do
+    Syslog.info("Terminating.")
+        exit
+    end
+
+  Signal.trap("HUP") do
+    yconfig = YAML.load_file(options[:configfile])
+    Syslog.info("Re-read #{options[:configfile]}")
+  end
+
+  yconfig = YAML.load_file(options[:configfile])
+
+  puts YAML.dump(yconfig) if options[:debug]
+
+  Syslog.open('stomp-git', Syslog::LOG_CONS, Syslog::LOG_DAEMON)
+
+  stompconnector = yconfig["rserver"] + "?" + yconfig["stomp-options"]
+
+  client = Stomp::Client.new(stompconnector)
+  listen_topic = yconfig["listen-topic"]
+  report_topic = yconfig["report-topic"]
+
+  if client
+    Syslog.info("Connected to #{listen_topic}")
+    puts "Connected to #{listen_topic}" if options[:debug]
+
+    client.subscribe "/topic/#{listen_topic}" do |message|
+      if message.body == "\n"
+        puts "Bodge-beat frame" if options[:debug]
+      else
+        message.body.each do |mline|
+        mkey,mval = mline.split(":",2)
+          if mkey == "repo"
+            repo = yconfig["#{mval.strip}"]
+
+            if options[:debug]
+              puts "Subject: #{message.headers["subject"]}"
+              puts "Message-ID: #{message.headers["message-id"]}"
+              puts "Repo: #{mval.strip}"
+              puts "--"
+              puts message.body
+              puts "--"
+            end
+
+            if repo.nil?
+              puts "Not our repo: #{mval}" if options[:debug]
+              break
+            end
+              
+            if File.exists?(repo)
+              status,stdout,stderr = systemu("/usr/bin/git fetch && /usr/bin/git fetch --tags", :cwd => repo, :chomp => true)
+
+              if status != 0
+                eventdetail = "Problem: " + host_name + stderr
+              else
+                eventdetail = "#{host_name} fetched change: #{message.headers["subject"]}"
+              end
+
+              Syslog.info(eventdetail)
+              client.publish("/topic/#{report_topic}",eventdetail, {:subject => "Talking to eventbot"})
+              puts eventdetail if options[:debug]
+
+              if options[:pm]
+                s1,s2,s3 = message.headers["subject"].split(' ',3)
+                branch = s2.sub('refs/heads/','')
+                pdir = yconfig["puppetenv"]
+                wdir = pdir + "/" + branch
+
+                puts "Branch: #{branch} (#{s2})" if options[:debug]
+                puts "Workdir: #{wdir}" if options[:debug]
+              
+                Dir.mkdir(wdir) if !File.exists?(wdir)
+                status,stdout,stderr = systemu("/usr/bin/git --work-tree=#{wdir} checkout -f origin/#{branch}", :cwd => repo, :chomp => true)
+
+                if status != 0
+                  eventdetail = "PM Problem: " + host_name + stderr
+                else
+                  eventdetail = "PM: Wrote branch #{branch} into #{wdir}"
+                end
+
+                Syslog.info(eventdetail)
+                client.publish("/topic/#{report_topic}",eventdetail, {:subject => "Talking to eventbot"})
+                puts eventdetail if options[:debug]
+              end
+            else
+              eventdetail = "Repo in config but not in filesystem: #{mval}"
+              Syslog.info(eventdetail)
+              client.publish("/topic/#{report_topic}",eventdetail, {:subject => "Talking to eventbot"})
+              puts eventdetail if options[:debug]
+            end
+          end
+        end
+      end 
+    end
+
+    client.join
+    client.close
+  end
+
+else
+  Process.detach(pid)
+end

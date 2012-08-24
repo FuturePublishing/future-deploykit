@@ -1,0 +1,51 @@
+#!/usr/bin/ruby
+ 
+require 'mcollective'
+
+include MCollective::RPC
+
+
+options = rpcoptions do |parser, options|
+	parser.define_head "f-checkout"
+	parser.banner = "Usage: f-checkout [options] [filters] --repo REPO --tag TAG"
+ 
+	parser.on('-r', '--repo REPO', 'Repo to mangle') do |v|
+		options[:repo] = v
+	end
+
+	parser.on('-t', '--tag TAG', 'Tag to shag') do |v|
+                options[:tag] = v
+        end
+
+
+end
+ 
+unless options.include?(:repo)
+	puts("You need to specify a repo with --repo")
+	exit! 1
+end
+
+unless options.include?(:tag)
+        puts("You need to specify a tag with --tag")
+        exit! 1
+end
+
+ 
+mc = rpcclient("gitagent", :options => options)
+
+# printrpc mc.git_tag(:repo => options[:repo])
+# puts mc.git_checkout(:repo => options[:repo], :tag => options[:tag]).inspect
+
+mc.git_checkout(:repo => options[:repo], :tag => options[:tag]).each do |spog|
+	print("Pre-deploy script #{spog[:data][:trub1]}:\n#{spog[:data][:prerr]}\n#{spog[:data][:prout]}\nExitcode: #{spog[:data][:prstat]}\n\n")
+	if spog[:data][:prstat] == 0
+		print("Update site #{spog[:data][:lsit]} to tag #{options[:tag]} from repo #{spog[:data][:lrep]}:\n#{spog[:data][:derr]}\n#{spog[:data][:dout]}Exitcode: #{spog[:data][:dstat]}\n\n")
+		if spog[:data][:dstat] == 0
+			printf("Post-deploy script #{spog[:data][:trub2]}:\n#{spog[:data][:err]}\n#{spog[:data][:out]}\nExitcode: #{spog[:data][:status]}\n")
+		end
+	end
+end
+
+printrpcstats
+
+mc.disconnect

@@ -1,0 +1,14 @@
+Usage:
+
+git-configure::site{ "spog": site => "www.spog.com", repo => "spog", rootdir => "/data" }
+
+Where the name is, um, the name, site is the name of the directory under the rootdir,
+and repo is the name of the git repository.
+
+Most of the time you won't need to change the rootdir since it defaults to data.
+
+As part of the setup, it installs a perl daemon called stomp-git, which waits for
+traffic about (repo) on future.git.commits. The repo and site-dir are written into
+the YAML config file (/etc/stomp-git/stomp-git.yaml) by the puppet code.
+
+Patches welcome.

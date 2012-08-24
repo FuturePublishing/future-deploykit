@@ -1,0 +1,117 @@
+#!/usr/bin/ruby 
+
+require 'rubygems'
+require 'yaml'
+require 'stomp'
+require 'syslog'
+require 'optparse'
+require 'uri'
+require 'net/http'
+
+ 
+options = {}
+ 
+optparse = OptionParser.new do|opts|
+  opts.banner = "Usage: stomp-jenkins.rb [options]"
+ 
+  options[:debug] = false
+  opts.on( '-d', '--debug', 'Much output, do not detach' ) do
+    options[:debug] = true
+  end
+
+  options[:configfile] = "/etc/stomp-jenkins/stomp-jenkins.yaml"
+    opts.on( '-c', '--config FILE', 'Config is FILE' ) do|file|
+      options[:configfile] = file
+    end
+
+  opts.on( '-h', '--help', 'Display this screen' ) do
+    puts opts
+        exit
+  end
+end
+
+optparse.parse!
+
+
+if !options[:debug]
+  pid = Process.fork
+else
+  pid = nil
+  puts "DEBUG"
+  puts "Config is #{options[:configfile]}"
+end
+
+if pid.nil?
+  Signal.trap("TERM") do
+    Syslog.info("Terminating.")
+    exit
+  end
+
+  Signal.trap("HUP") do
+    yconfig = YAML.load_file(options[:configfile])
+    Syslog.info("Re-read #{options[:configfile]}")
+  end
+
+  yconfig = YAML.load_file(options[:configfile])
+
+  puts YAML.dump(yconfig) if options[:debug]
+
+  Syslog.open('stomp-jenkins', Syslog::LOG_CONS, Syslog::LOG_DAEMON)
+
+  stompconnector = yconfig["rserver"] + "?" + yconfig["stomp-options"]
+  listen_topic = yconfig["listen-topic"]
+  report_topic = yconfig["report-topic"]
+  jenkins_url  = yconfig["jenkins-url"]
+
+  client = Stomp::Client.new(stompconnector)
+
+  if client
+    Syslog.info("Connected to #{listen_topic}")
+    puts "Connected to #{listen_topic}" if options[:debug]
+
+    client.subscribe "/topic/#{listen_topic}" do |message|
+      if message.body == "\n"
+        puts "Bodge-beat frame" if options[:debug]
+      else
+        message.body.each do |mline|
+          mkey,project = mline.split(":",2)
+          if mkey == "repo"
+            ticket = yconfig["#{project.strip}"]
+
+            if ticket.nil?
+              puts "Not our repo: #{project}" if options[:debug]
+              break
+            end
+
+            jenkins = jenkins_url + "/job/" + project.strip + "/build?token=" + ticket
+            uri = URI.parse(jenkins)
+            http = Net::HTTP.new(uri.host, uri.port)
+            response = http.request(Net::HTTP::Get.new(uri.request_uri))
+
+            if options[:debug]
+              puts "Subject: #{message.headers["subject"]}"
+              puts "Message-ID: #{message.headers["message-id"]}"
+              puts "Repo/ticket: #{project.strip}/#{ticket}"
+              puts "--"
+              puts message.body
+              puts "--"
+              puts "URI: #{jenkins}"
+              puts "Response: #{response}"
+              puts "Requested Jenkins build: #{message.headers["subject"]}"
+            end
+
+            eventdetail = "Requested Jenkins build: #{message.headers["subject"]}"
+            Syslog.info(eventdetail)
+            client.publish("/topic/#{report_topic}",eventdetail, {:subject => "Talking to eventbot"})
+          end
+        end
+      end 
+    end
+
+    client.join
+    client.close
+  end
+
+else
+  Process.detach(pid)
+end

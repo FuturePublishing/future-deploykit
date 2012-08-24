@@ -1,0 +1,8 @@
+#!/bin/bash
+
+while read oldrev newrev refname
+do
+   echo $oldrev $newrev $refname | /bin/sh /home/git/.gitolite/hooks/common/post-receive-email
+   echo $oldrev $newrev $refname | /usr/bin/perl /home/git/.gitolite/hooks/common/post-receive-stomp.pl
+done
+

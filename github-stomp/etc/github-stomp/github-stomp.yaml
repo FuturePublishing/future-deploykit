@@ -1,0 +1,8 @@
+---
+# 
+rserver: failover://(stomp://gituser:gitpw@broker01:61613,stomp://gituser:gitpw@broker02:61613)
+#
+# Topics:
+trigger-topic: future.git.commits
+report-topic: future.events.stomp-git
+#

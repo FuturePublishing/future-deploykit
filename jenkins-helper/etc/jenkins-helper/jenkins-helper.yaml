@@ -1,0 +1,4 @@
+---
+# 
+rserver: failover://(stomp://gituser:gitpw@broker01:61613,stomp://gituser:gitpw@broker02:61613)
+#

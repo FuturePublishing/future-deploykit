@@ -1,0 +1,36 @@
+#!/usr/bin/ruby
+ 
+require 'mcollective'
+
+include MCollective::RPC
+
+
+options = rpcoptions do |parser, options|
+	parser.define_head "f-taglist"
+	parser.banner = "Usage: f-taglist [options] [filters] --repo REPO"
+ 
+	parser.on('-r', '--repo REPO', 'Repo to mangle') do |v|
+		options[:repo] = v
+	end
+end
+ 
+unless options.include?(:repo)
+	puts("You need to specify a repo with --repo")
+	exit! 1
+end
+ 
+mc = rpcclient("gitagent", :options => options)
+
+# printrpc mc.git_tag(:repo => options[:repo])
+
+mc.git_tag(:repo => options[:repo]).each do |spog|
+	taglist = spog[:data][:tout]
+	branchlist = spog[:data][:bout]
+	rrepo = spog[:data][:lrep]
+	gitrepo = options[:repo]
+	printf("Repo: %s (%s)\n[Tags]\n%s\n[/Tags]\n[Branches]\n%s\n[/Branches]\n",gitrepo,rrepo,taglist,branchlist)
+end
+
+printrpcstats
+
+mc.disconnect

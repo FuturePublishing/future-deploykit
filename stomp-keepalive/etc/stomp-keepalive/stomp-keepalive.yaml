@@ -1,0 +1,23 @@
+---
+# YAML!
+# Corp
+stompserver1: broker01
+stompserver2: broker02
+#
+stompport1: 61613
+stompport2: 61613
+
+stomp-options: initialReconnectDelay=0.01&randomize=false&useExponentialBackOff=true&MaxReconnectDelay=30&BackOffMultiplier=2&MaxReconnectAttempts=0&Backup=false&Timeout=-1
+#
+# Topics, username & pw.
+
+topics:
+  future.git.commits:
+    user: gitbot
+    pass: [password]
+    type: topic
+
+  future.randomqueue.dev:
+    user: [queue-user]
+    pass: [queue-user's p/w]
+    type: queue

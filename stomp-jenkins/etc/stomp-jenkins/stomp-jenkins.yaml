@@ -1,0 +1,22 @@
+---
+# YAML!
+rserver: failover://(stomp://gituser:gitpw@broker01:61613,stomp://gituser:gitpw@broker02:61613)
+# ... Where gituser is an AMQ user with at least read access to listen-topic
+# ... and write access to report-topic with p/w, er, gitpw.
+# ... You may or may not need to fill in the FQDNs for your broker(s) if you've 
+# ... performed the same 'clever' CNAMEing that I have. Well, I say 'clever'...
+#
+# Stomp connection options.
+#
+stomp-options: initialReconnectDelay=0.01&randomize=false&useExponentialBackOff=true&MaxReconnectDelay=30&BackOffMultiplier=2&MaxReconnectAttempts=0&Backup=false&Timeout=-1
+#
+# Topics:
+listen-topic: future.git.commits
+report-topic: future.events.jenkins
+#
+# Jenkins endpoint
+jenkins-url: http://jenkins.yourorg.com:8080
+#
+# Repos below here
+# repo-name: Jenkins-token
+puppet-environments: MagicJenkinsPassword
