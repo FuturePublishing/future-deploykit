@@ -1,0 +1,11 @@
+---
+rserver: failover://(stomp://user:pass@broker01:61613,stomp://user:pass@broker02:61613)
+#
+# Stomp connection options.
+#
+stomp-options: initialReconnectDelay=0.01&randomize=false&useExponentialBackOff=true&MaxReconnectDelay=30&BackOffMultiplier=2&MaxReconnectAttempts=0&Backup=false&Timeout=-1
+#
+# Topics:
+trigger-topic: future.git.commits
+report-topic: future.events.gitolite
+
