@@ -4,19 +4,19 @@ include h_git_configure
 
 In a relevant part of your hiera tree:
 
-  gitconfigure:
-    bleng1:
-      site: www.blah.com
-      repo: wormpress
-      origin: 'git@git.future.net.uk:wormpress'
-      base_tag: 3.4.1-future
-      target: 'www.blah.com'
-    bleng2:
-      site: www.blah.com
-      repo: repo-name
-      origin: 'git@git.future.net.uk:repo-name'
-      base_tag: 3.4.9.1
-      target: 'www.blah.com/my-repo-goes-here'
+    gitconfigure:
+      bleng1:
+        site: www.blah.com
+        repo: wormpress
+        origin: 'git@git.future.net.uk:wormpress'
+        base_tag: 3.4.1-future
+        target: 'www.blah.com'
+      bleng2:
+        site: www.blah.com
+        repo: repo-name
+        origin: 'git@git.future.net.uk:repo-name'
+        base_tag: 3.4.9.1
+        target: 'www.blah.com/my-repo-goes-here'
 
 ... Where the blengs are placeholders to make create_resources work.
 
