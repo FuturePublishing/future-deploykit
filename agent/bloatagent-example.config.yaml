@@ -1,0 +1,30 @@
+---
+
+site-root: /data/site
+repo-root: /data/repo
+deploy-root: /data/deploy
+user-root: /data/user
+
+repo-list:
+  - name: wormpress
+    target: www.blah.com
+    base_tag: 3.4.1-future
+
+  - name: wp-tinymce-advanced
+    target: www.blah.com/wp-content/plugins/wp-tinymce-advanced
+    base_tag: 3.4.9.1
+
+controldir: /data/deploy/wormpress_3.4.1-future/future-control
+
+# List (probably) of softlinks to generate which builds the web-tree
+# From parts that are not version-controlled. Typically user-data.
+directorymap:
+  - source: dodgy-uploaded-jpegs
+    target: wp-content/uploads
+
+  - source: disturbing-home-videos
+    target: wp-content/filth
+
+# In theory this file is cobbled up from parts by one or more puppet
+# modules. If you're not feeling that brave, you can hand-edit the thing.
+# A demonstration puppet module for this can be found in the obvious directory.
