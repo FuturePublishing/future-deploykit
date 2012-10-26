@@ -15,7 +15,9 @@ Jenkins-helper: Emit status messages on future.jenkins and future.events.jenkins
   (A better way of doing this would be a STOMP plugin for Jenkins, obviously.)
 
 Stomp-git: Watch $topic. If a project we care about had been updated, perform a git fetch on that repo.
+
 	Build: fpm -s dir -t deb -n "stomp-git" -v 2.2 -a all -d "rubygem-systemu" --description "Stomp-listening robot git-updater (Ruby version)" -C ./stomp-git
+
 	Systemu is a Beardian module because it makes life more obvious for puppetry.
 	Generate same with: fpm -s gem -t deb systemu
 	Yes this should be a rake task.
