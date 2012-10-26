@@ -24,11 +24,6 @@ PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
 RUNAS=www-data
 
-# I say! If you're one of those types who'd like the jolly old thing to beetle
-# along in puppetmaster mode for use with that puppet-environment malarkey, then
-# set DAEMON_ARGS to "-p" and RUNAS to puppet, or whatever user you've decided
-# to check the puppet-environments tree out as. It's the bee's knees, what!
-
 # Exit if the package is not installed
 [ -x "$DAEMON" ] || exit 0
 
