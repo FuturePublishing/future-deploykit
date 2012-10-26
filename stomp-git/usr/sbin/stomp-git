@@ -9,6 +9,8 @@ require 'optparse'
 require 'socket'
  
 options = {}
+version = "2.6"
+crlf = /(\r\n|\n\r|\r|\n)/
 
 optparse = OptionParser.new do|opts|
   opts.banner = "Usage: stomp-git.rb [options]"
@@ -18,11 +20,6 @@ optparse = OptionParser.new do|opts|
     options[:debug] = true
   end
  
-  options[:pm] = false
-  opts.on( '-p', '--puppetmaster', 'Magic puppetmaster mode' ) do
-    options[:pm] = true
-  end
-
   options[:configfile] = "/etc/stomp-git/stomp-git.yaml"
   opts.on( '-c', '--config FILE', 'Config is FILE' ) do|file|
     options[:configfile] = file
@@ -43,8 +40,8 @@ if !options[:debug]
 else
   pid = nil
   puts "DEBUG"
+  puts "VERSION #{version}"
   puts "CONFIGFILE: #{options[:configfile]}"
-  puts "PUPPETMASTER" if options[:pm]
 end
 
 if pid.nil?
@@ -70,9 +67,15 @@ if pid.nil?
   listen_topic = yconfig["listen-topic"]
   report_topic = yconfig["report-topic"]
 
+  repos = yconfig["repo-list"]
+
+  if options[:debug]
+    puts repos.inspect
+  end
+
   if client
-    Syslog.info("Connected to #{listen_topic}")
-    puts "Connected to #{listen_topic}" if options[:debug]
+    Syslog.info("V. #{version} connected to #{listen_topic}")
+    puts "V. #{version} connected to #{listen_topic}" if options[:debug]
 
     client.subscribe "/topic/#{listen_topic}" do |message|
       if message.body == "\n"
@@ -81,7 +84,7 @@ if pid.nil?
         message.body.each do |mline|
         mkey,mval = mline.split(":",2)
           if mkey == "repo"
-            repo = yconfig["#{mval.strip}"]
+            repo = repos["#{mval.strip}"]
 
             if options[:debug]
               puts "Subject: #{message.headers["subject"]}"
@@ -97,41 +100,86 @@ if pid.nil?
               break
             end
               
-            if File.exists?(repo)
-              status,stdout,stderr = systemu("/usr/bin/git fetch && /usr/bin/git fetch --tags", :cwd => repo, :chomp => true)
+            if File.exists?(repo["repo"])
+              status,stdout,stderr = systemu("/usr/bin/git fetch && /usr/bin/git fetch --tags", :cwd => repo["repo"], :chomp => true)
 
               if status != 0
-                eventdetail = "Problem: " + host_name + stderr
+                status_message = " problem: "
               else
-                eventdetail = "#{host_name} fetched change: #{message.headers["subject"]}"
+                status_message = " fetched change: #{message.headers["subject"]}"
               end
+
+              eventdetail = host_name + status_message
+              eventdetail.gsub!(crlf, " ")
 
               Syslog.info(eventdetail)
               client.publish("/topic/#{report_topic}",eventdetail, {:subject => "Talking to eventbot"})
               puts eventdetail if options[:debug]
 
-              if options[:pm]
+              if repo["mode"] == "puppetmaster"
                 s1,s2,s3 = message.headers["subject"].split(' ',3)
                 branch = s2.sub('refs/heads/','')
-                pdir = yconfig["puppetenv"]
+                pdir = repo["target"]
                 wdir = pdir + "/" + branch
 
                 puts "Branch: #{branch} (#{s2})" if options[:debug]
                 puts "Workdir: #{wdir}" if options[:debug]
               
                 Dir.mkdir(wdir) if !File.exists?(wdir)
-                status,stdout,stderr = systemu("/usr/bin/git --work-tree=#{wdir} checkout -f origin/#{branch}", :cwd => repo, :chomp => true)
+                status,stdout,stderr = systemu("/usr/bin/git --work-tree=#{wdir} checkout -f origin/#{branch}", :cwd => repo["repo"], :chomp => true) 
 
                 if status != 0
-                  eventdetail = "PM Problem: " + host_name + stderr
+                  status_message = " PM problem: "
                 else
-                  eventdetail = "PM: Wrote branch #{branch} into #{wdir}"
+                  status_message = " PM wrote branch #{branch} into #{wdir} "
                 end
+
+                eventdetail = host_name + status_message
+                eventdetail << "#{stdout} #{stderr}" if options[:debug]
+                eventdetail.gsub!(crlf, " ")
 
                 Syslog.info(eventdetail)
                 client.publish("/topic/#{report_topic}",eventdetail, {:subject => "Talking to eventbot"})
                 puts eventdetail if options[:debug]
               end
+
+              if repo["mode"] == "dangerous"
+                status,stdout,stderr = systemu("/usr/bin/git checkout origin/master", :cwd => repo["repo"], :chomp => true)
+
+                if status != 0
+                  status_message = " problem: "
+                else
+                  status_message = " checkout: "
+                end
+
+                eventdetail = host_name + status_message + " (#{repo["mode"]})"
+                eventdetail << " #{stdout} #{stderr}" if options[:debug]
+                eventdetail.gsub!(crlf, " ")
+
+                Syslog.info(eventdetail)
+                client.publish("/topic/#{report_topic}",eventdetail, {:subject => "Talking to eventbot"})
+                puts eventdetail if options[:debug]
+              end
+
+              if repo["mode"] == "trusting"
+                wdir = repo["target"]
+                status,stdout,stderr = systemu("/usr/bin/git --work-tree=#{wdir} checkout -f origin/master", :cwd => repo["repo"], :chomp => true)
+
+                if status != 0
+                  status_message = " problem: "
+                else
+                  status_message = " checkout: "
+                end
+
+                eventdetail = host_name + status_message + " (#{repo["mode"]})"
+                eventdetail << " #{stdout} #{stderr}" if options[:debug]
+                eventdetail.gsub!(crlf, " ")
+
+                Syslog.info(eventdetail)
+                client.publish("/topic/#{report_topic}",eventdetail, {:subject => "Talking to eventbot"})
+                puts eventdetail if options[:debug]
+              end
+
             else
               eventdetail = "Repo in config but not in filesystem: #{mval}"
               Syslog.info(eventdetail)
