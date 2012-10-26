@@ -18,9 +18,9 @@ Stomp-git: Watch $topic. If a project we care about had been updated, perform a 
 
 	Build: fpm -s dir -t deb -n "stomp-git" -v 2.2 -a all -d "rubygem-systemu" --description "Stomp-listening robot git-updater (Ruby version)" -C ./stomp-git
 
-	Systemu is a Beardian module because it makes life more obvious for puppetry.
-	Generate same with: fpm -s gem -t deb systemu
-	Yes this should be a rake task.
+Systemu is a Beardian module because it makes life more obvious for puppetry.
+Generate same with: fpm -s gem -t deb systemu
+Yes this should be a rake task.
 
 puppet-module: Git repo management and stomp-git install/setup.
 
