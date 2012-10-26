@@ -14,8 +14,7 @@ stomp-options: initialReconnectDelay=0.01&randomize=false&useExponentialBackOff=
 listen-topic: future.git.commits
 report-topic: future.events.stomp-git
 #
-# Puppetmaster specials
-# It will be a Bad Day when someone creates a 'puppetenv' repo. Don't do that.
+# Puppetmaster mode
 #
 # This is a version of this thing:
 # http://hunnur.com/blog/2010/10/dynamic-git-branch-puppet-environments/
@@ -36,14 +35,35 @@ report-topic: future.events.stomp-git
 # Configure your environments in puppet.conf like this:
 # manifest = $confdir/environments/$environment/manifests/site.pp
 #
-# Set the '-p' option in the initscript.
+# Uncomment/configure the/a relevant repo-type
 #
 # Profit!
 #
-# Currently mixing puppetmaster mode and 'normal' repo updates is probably a bad idea.
-# 
-#puppetenv: /etc/puppet/environments
-#puppet-environments: /etc/puppet/puppet-environments
+# All repo modes badly explained:
+# normal: - fetch $repo.
+# trusting - fetch $repo, checkout origin/master to $target.
+# dangerous - fetch $repo, checkout origin/master.
+# puppetmaster - fetch $repo, checkout to $target/$branch. As above.
 #
 # Repos below here
-# spog: /data/www.spog.com
+#
+repo-list:
+
+#  example-repo:
+#    repo: /data/repos/example
+#    mode: normal
+#
+#  spog:
+#    repo: /data/repos/octopress-site
+#    target: /data/sites/www.my-octopress.co.uk
+#    mode: trusting
+#
+#  puppet-hieradata:
+#    repo: /etc/puppet/hieradata
+#    mode: dangerous
+#
+#  puppet-environments:
+#    repo: /etc/puppet/puppet-environments
+#    target: /etc/puppet/environments
+#    mode: puppetmaster
+
