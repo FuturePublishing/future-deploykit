@@ -1,0 +1,8 @@
+---
+
+site-root: /data/site
+repo-root: /data/repo
+deploy-root: /data/deploy
+user-root: /data/user
+
+repo-list:
