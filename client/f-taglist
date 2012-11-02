@@ -6,29 +6,37 @@ include MCollective::RPC
 
 
 options = rpcoptions do |parser, options|
-	parser.define_head "f-taglist"
-	parser.banner = "Usage: f-taglist [options] [filters] --repo REPO"
+  parser.define_head "f-taglist"
+  parser.banner = "Usage: f-taglist [options] [filters] --repo REPO"
  
-	parser.on('-r', '--repo REPO', 'Repo to mangle') do |v|
-		options[:repo] = v
-	end
+  parser.on('-r', '--repo REPO', 'Repo to mangle') do |v|
+    options[:repo] = v
+  end
+
+  parser.on('-n','--num NUM', 'Number of revisions to report') do |v|
+    options[:count] = v.to_i
+  end
 end
  
 unless options.include?(:repo)
-	puts("You need to specify a repo with --repo")
-	exit! 1
+  puts("You need to specify a repo with --repo")
+  exit! 1
+end
+
+unless options.include?(:count)
+  options[:count] = 0
 end
  
 mc = rpcclient("gitagent", :options => options)
 
-# printrpc mc.git_tag(:repo => options[:repo])
+#printrpc mc.git_tag(:repo => options[:repo], :count => options[:count])
 
-mc.git_tag(:repo => options[:repo]).each do |spog|
-	taglist = spog[:data][:tout]
-	branchlist = spog[:data][:bout]
-	rrepo = spog[:data][:lrep]
-	gitrepo = options[:repo]
-	printf("Repo: %s (%s)\n[Tags]\n%s\n[/Tags]\n[Branches]\n%s\n[/Branches]\n",gitrepo,rrepo,taglist,branchlist)
+mc.git_tag(:repo => options[:repo], :count => options[:count]).each do |spog|
+  taglist = spog[:data][:tout]
+  branchlist = spog[:data][:bout]
+  rrepo = spog[:data][:lrep]
+  gitrepo = options[:repo]
+  printf("Repo: %s (%s)\n[Tags]\n%s\n[/Tags]\n[Branches]\n%s\n[/Branches]\n",gitrepo,rrepo,taglist,branchlist)
 end
 
 printrpcstats
