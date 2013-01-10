@@ -20,9 +20,9 @@ DESC="Notify remote repo via STOMP"
 NAME=stomp-git
 DAEMON=/usr/sbin/$NAME
 DAEMON_ARGS=""
-PIDFILE=/var/run/$NAME.pid
 SCRIPTNAME=/etc/init.d/$NAME
-RUNAS=www-data
+RUNAS=root
+
 
 # Exit if the package is not installed
 [ -x "$DAEMON" ] || exit 0
@@ -42,17 +42,13 @@ RUNAS=www-data
 #
 do_start()
 {
-	# Lashup. This is the last opportunity to do anything as r00t,
-	# so make sure that the files exist and are r/w $punter.
-	touch $PIDFILE
-	chown $RUNAS:$RUNAS $PIDFILE
 	# Return
 	#   0 if daemon has been started
 	#   1 if daemon was already running
 	#   2 if daemon could not be started
-	start-stop-daemon --start --quiet --pidfile $PIDFILE --chuid $RUNAS --exec $DAEMON --test > /dev/null \
+	start-stop-daemon --start --quiet --chuid $RUNAS --exec $DAEMON --test > /dev/null \
 		|| return 1
-	start-stop-daemon --start --quiet --pidfile $PIDFILE --chuid $RUNAS --exec $DAEMON -- \
+	start-stop-daemon --start --quiet --chuid $RUNAS --exec $DAEMON -- \
 		$DAEMON_ARGS \
 		|| return 2
 	# Add code here, if necessary, that waits for the process to be ready
@@ -70,7 +66,7 @@ do_stop()
 	#   1 if daemon was already stopped
 	#   2 if daemon could not be stopped
 	#   other if a failure occurred
-	start-stop-daemon --stop --quiet --retry=TERM/30/KILL/5 --pidfile $PIDFILE --name $NAME
+	start-stop-daemon --stop --quiet --retry=TERM/30/KILL/5 --name $NAME
 	RETVAL="$?"
 	[ "$RETVAL" = 2 ] && return 2
 	# Wait for children to finish too if this is a daemon that forks
@@ -95,7 +91,7 @@ do_reload() {
 	# restarting (for example, when it is sent a SIGHUP),
 	# then implement that here.
 	#
-	start-stop-daemon --stop --signal 1 --quiet --pidfile $PIDFILE --name $NAME
+	start-stop-daemon --stop --signal 1 --quiet --name $NAME
 	return 0
 }
 
