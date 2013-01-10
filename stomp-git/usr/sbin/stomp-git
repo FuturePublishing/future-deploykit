@@ -7,9 +7,11 @@ require 'stomp'
 require 'syslog'
 require 'optparse'
 require 'socket'
+require 'etc'
+
  
 options = {}
-version = "2.6"
+version = "3.2"
 crlf = /(\r\n|\n\r|\r|\n)/
 
 optparse = OptionParser.new do|opts|
@@ -100,11 +102,28 @@ if pid.nil?
               break
             end
               
-            if File.exists?(repo["repo"])
-              status,stdout,stderr = systemu("/usr/bin/git fetch && /usr/bin/git fetch --tags", :cwd => repo["repo"], :chomp => true)
+            rdir = repo["repo"]
+            if File.exists?(rdir)
+              guser = repo["user"]
+              begin
+                guserinfo = Etc.getpwnam(guser)
+              rescue ArgumentError
+                eventdetail = host_name + " problem: No such user #{guser}"
+                Syslog.info(eventdetail)
+                client.publish("/topic/#{report_topic}",eventdetail, {:subject => "Talking to eventbot"})
+                puts eventdetail if options[:debug]
+                next
+              end 
+
+              next if File.readlines('/etc/shells').grep(/#{guserinfo.shell}/).size == 0
+
+              commandline = "/bin/su - #{guser} -c \"cd #{rdir} && /usr/bin/git fetch && /usr/bin/git fetch --tags\""
+              puts "Command is #{commandline}" if options[:debug]
+
+              status,stdout,stderr = systemu(commandline, :cwd => rdir, :chomp => true)
 
               if status != 0
-                status_message = " problem: "
+                status_message = " problem: " + stderr
               else
                 status_message = " fetched change: #{message.headers["subject"]}"
               end
@@ -125,17 +144,24 @@ if pid.nil?
                 puts "Branch: #{branch} (#{s2})" if options[:debug]
                 puts "Workdir: #{wdir}" if options[:debug]
               
-                Dir.mkdir(wdir) if !File.exists?(wdir)
-                status,stdout,stderr = systemu("/usr/bin/git --work-tree=#{wdir} checkout -f origin/#{branch}", :cwd => repo["repo"], :chomp => true) 
+                if !File.exists?(wdir)
+                  Dir.mkdir(wdir)
+                  File.chown(guser.uid,guser.gid,wdir)
+                end
+
+                commandline = "/bin/su - #{guser} -c \"cd #{rdir} && /usr/bin/git --work-tree=#{wdir} checkout -f origin/#{branch}\""
+                puts "Command is #{commandline}" if options[:debug]
+
+                status,stdout,stderr = systemu(commandline, :cwd => rdir, :chomp => true) 
 
                 if status != 0
-                  status_message = " PM problem: "
+                  status_message = " PM problem: " + stderr
                 else
                   status_message = " PM wrote branch #{branch} into #{wdir} "
                 end
 
                 eventdetail = host_name + status_message
-                eventdetail << "#{stdout} #{stderr}" if options[:debug]
+                eventdetail << "#{stdout}" if options[:debug]
                 eventdetail.gsub!(crlf, " ")
 
                 Syslog.info(eventdetail)
@@ -144,16 +170,20 @@ if pid.nil?
               end
 
               if repo["mode"] == "dangerous"
-                status,stdout,stderr = systemu("/usr/bin/git checkout origin/master", :cwd => repo["repo"], :chomp => true)
+
+                commandline = "/bin/su - #{guser} -c \"cd #{rdir} && /usr/bin/git checkout origin/master\""
+                puts "Command is #{commandline}" if options[:debug]
+
+                status,stdout,stderr = systemu(commandline, :cwd => rdir, :chomp => true)
 
                 if status != 0
-                  status_message = " problem: "
+                  status_message = " problem: " + stderr
                 else
                   status_message = " checkout: "
                 end
 
                 eventdetail = host_name + status_message + " (#{repo["mode"]})"
-                eventdetail << " #{stdout} #{stderr}" if options[:debug]
+                eventdetail << " #{stdout}" if options[:debug]
                 eventdetail.gsub!(crlf, " ")
 
                 Syslog.info(eventdetail)
@@ -163,16 +193,20 @@ if pid.nil?
 
               if repo["mode"] == "trusting"
                 wdir = repo["target"]
-                status,stdout,stderr = systemu("/usr/bin/git --work-tree=#{wdir} checkout -f origin/master", :cwd => repo["repo"], :chomp => true)
+
+                commandline = "/bin/su - #{guser} -c \"cd #{rdir} && /usr/bin/git --work-tree=#{wdir} checkout -f origin/master\""
+                puts "Command is #{commandline}" if options[:debug]
+
+                status,stdout,stderr = systemu(commandline, :cwd => rdir, :chomp => true)
 
                 if status != 0
-                  status_message = " problem: "
+                  status_message = " problem: " + stderr
                 else
                   status_message = " checkout: "
                 end
 
                 eventdetail = host_name + status_message + " (#{repo["mode"]})"
-                eventdetail << " #{stdout} #{stderr}" if options[:debug]
+                eventdetail << " #{stdout}" if options[:debug]
                 eventdetail.gsub!(crlf, " ")
 
                 Syslog.info(eventdetail)
