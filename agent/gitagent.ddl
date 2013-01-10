@@ -2,7 +2,7 @@ metadata    :name        => "gitagent",
             :description => "Git agent",
             :author      => "JHR",
             :license     => "BSD",
-            :version     => "0.4",
+            :version     => "0.6",
             :url         => "https://github.com/futureus/deploybot-40k",
             :timeout     => 60
 

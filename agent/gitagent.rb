@@ -7,14 +7,6 @@ module MCollective
       require 'syslog'
       require 'socket'
       
-      metadata  :name        => "Git agent",
-                :description => "Git agent",
-                :author      => "JHR",
-                :license     => "BSD",
-                :version     => "0.5",
-                :url         => "https://github.com/futureus/deploybot-40k",
-                :timeout     => 60
-
       activate_when do
         File.exists?("/etc/facts.d/facts.yaml")
       end
@@ -71,6 +63,7 @@ module MCollective
 
         lrepo = rconfig["repo_#{request[:repo]}"]
         lsite = rconfig["sitedir_#{request[:repo]}"]
+        sitetype = rconfig["sitetype_#{request[:repo]}"]
         wdir = rconfig["controldir_#{request[:repo]}"] 
         precmd = wdir + "/pre-deploy.sh"
         postcmd = wdir + "/post-deploy.sh"
@@ -108,9 +101,10 @@ module MCollective
                 deploylog = "Post-deploy status: #{reply[:status]} stdout: #{reply[:out]} stderr: #{reply[:err]}"
                 Log.info(deploylog)
                 if sclient
-                  eventdetail = "git-agent on #{host_name} checked out tag #{request[:tag]} from repo #{lrepo} to target #{lsite} request id #{request[:request_id]}"
+                  eventdetail = "git-agent on #{host_name} checked out tag #{request[:tag]} from repo #{lrepo} to target #{lsite} request id #{request[:request_id]} type #{sitetype}"
                   Log.info(eventdetail)
                   sclient.publish("/topic/#{report_topic}",eventdetail, {:subject => "Talking to eventbot"})
+                  sclient.close
                 end
               else
                 reply[:status] = 1
