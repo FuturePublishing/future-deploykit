@@ -50,19 +50,23 @@ report-topic: future.events.stomp-git
 repo-list:
 
 #  example-repo:
+#    user: rubyapps
 #    repo: /data/repos/example
 #    mode: normal
 #
 #  spog:
+#    user: www-data
 #    repo: /data/repos/octopress-site
 #    target: /data/sites/www.my-octopress.co.uk
 #    mode: trusting
 #
 #  puppet-hieradata:
+#    user: puppet
 #    repo: /etc/puppet/hieradata
 #    mode: dangerous
 #
 #  puppet-environments:
+#    user: puppet
 #    repo: /etc/puppet/puppet-environments
 #    target: /etc/puppet/environments
 #    mode: puppetmaster
