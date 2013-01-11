@@ -14,6 +14,33 @@ options = {}
 version = "3.2"
 crlf = /(\r\n|\n\r|\r|\n)/
 
+def logmessage(message,sclient,topic,debug)
+  Syslog.info(message)
+  host_name = Socket::gethostname
+  smessage = host_name + " " + message
+  sclient.publish("/topic/#{topic}",smessage, {:subject => "Talking to eventbot"}) if sclient
+  puts message if debug
+end
+
+def do_gitcommand(command,mode,workdir,sclient,topic,debug)
+  crlf = /(\r\n|\n\r|\r|\n)/
+  puts "Command is #{command}" if debug
+
+  status,stdout,stderr = systemu(command, :cwd => workdir, :chomp => true) 
+
+  if status != 0
+    status_message = " problem: " + stderr
+  else
+    status_message = " checkout: "
+  end
+
+  eventdetail = status_message + " (#{mode})"
+  eventdetail << "#{stdout}" if debug
+  eventdetail.gsub!(crlf, " ")
+
+  logmessage(eventdetail,sclient,topic,debug)
+end
+
 optparse = OptionParser.new do|opts|
   opts.banner = "Usage: stomp-git.rb [options]"
  
@@ -34,8 +61,6 @@ optparse = OptionParser.new do|opts|
 end
 
 optparse.parse!
-
-host_name = Socket::gethostname
 
 if !options[:debug]
   pid = Process.fork
@@ -58,37 +83,32 @@ if pid.nil?
   end
 
   yconfig = YAML.load_file(options[:configfile])
+  sdebug = options[:debug]
 
-  puts YAML.dump(yconfig) if options[:debug]
+  puts YAML.dump(yconfig) if sdebug
 
   Syslog.open('stomp-git', Syslog::LOG_CONS, Syslog::LOG_DAEMON)
 
   stompconnector = yconfig["rserver"] + "?" + yconfig["stomp-options"]
-
-  client = Stomp::Client.new(stompconnector)
   listen_topic = yconfig["listen-topic"]
   report_topic = yconfig["report-topic"]
-
   repos = yconfig["repo-list"]
 
-  if options[:debug]
-    puts repos.inspect
-  end
+  client = Stomp::Client.new(stompconnector)
 
   if client
-    Syslog.info("V. #{version} connected to #{listen_topic}")
-    puts "V. #{version} connected to #{listen_topic}" if options[:debug]
+    logmessage("V. #{version} connected to #{listen_topic}",client,report_topic,sdebug)
 
     client.subscribe "/topic/#{listen_topic}" do |message|
       if message.body == "\n"
-        puts "Bodge-beat frame" if options[:debug]
+        puts "Bodge-beat frame" if sdebug
       else
         message.body.each do |mline|
         mkey,mval = mline.split(":",2)
           if mkey == "repo"
             repo = repos["#{mval.strip}"]
 
-            if options[:debug]
+            if sdebug
               puts "Subject: #{message.headers["subject"]}"
               puts "Message-ID: #{message.headers["message-id"]}"
               puts "Repo: #{mval.strip}"
@@ -98,27 +118,26 @@ if pid.nil?
             end
 
             if repo.nil?
-              puts "Not our repo: #{mval}" if options[:debug]
+              puts "Not our repo: #{mval}" if sdebug
               break
             end
               
             rdir = repo["repo"]
             if File.exists?(rdir)
               guser = repo["user"]
+              rmode = repo["mode"]
               begin
                 guserinfo = Etc.getpwnam(guser)
               rescue ArgumentError
-                eventdetail = host_name + " problem: No such user #{guser}"
-                Syslog.info(eventdetail)
-                client.publish("/topic/#{report_topic}",eventdetail, {:subject => "Talking to eventbot"})
-                puts eventdetail if options[:debug]
+                eventdetail = " problem: No such user #{guser}"
+                logmessage(eventdetail,client,report_topic,sdebug)
                 next
               end 
 
               next if File.readlines('/etc/shells').grep(/#{guserinfo.shell}/).size == 0
 
               commandline = "/bin/su - #{guser} -c \"cd #{rdir} && /usr/bin/git fetch && /usr/bin/git fetch --tags\""
-              puts "Command is #{commandline}" if options[:debug]
+              puts "Command is #{commandline}" if sdebug
 
               status,stdout,stderr = systemu(commandline, :cwd => rdir, :chomp => true)
 
@@ -128,97 +147,40 @@ if pid.nil?
                 status_message = " fetched change: #{message.headers["subject"]}"
               end
 
-              eventdetail = host_name + status_message
+              eventdetail = status_message
               eventdetail.gsub!(crlf, " ")
 
-              Syslog.info(eventdetail)
-              client.publish("/topic/#{report_topic}",eventdetail, {:subject => "Talking to eventbot"})
-              puts eventdetail if options[:debug]
+              logmessage(eventdetail,client,report_topic,sdebug)
 
-              if repo["mode"] == "puppetmaster"
+              if rmode == "puppetmaster"
                 s1,s2,s3 = message.headers["subject"].split(' ',3)
                 branch = s2.sub('refs/heads/','')
                 pdir = repo["target"]
                 wdir = pdir + "/" + branch
 
-                puts "Branch: #{branch} (#{s2})" if options[:debug]
-                puts "Workdir: #{wdir}" if options[:debug]
-              
                 if !File.exists?(wdir)
                   Dir.mkdir(wdir)
                   File.chown(guser.uid,guser.gid,wdir)
                 end
 
                 commandline = "/bin/su - #{guser} -c \"cd #{rdir} && /usr/bin/git --work-tree=#{wdir} checkout -f origin/#{branch}\""
-                puts "Command is #{commandline}" if options[:debug]
-
-                status,stdout,stderr = systemu(commandline, :cwd => rdir, :chomp => true) 
-
-                if status != 0
-                  status_message = " PM problem: " + stderr
-                else
-                  status_message = " PM wrote branch #{branch} into #{wdir} "
-                end
-
-                eventdetail = host_name + status_message
-                eventdetail << "#{stdout}" if options[:debug]
-                eventdetail.gsub!(crlf, " ")
-
-                Syslog.info(eventdetail)
-                client.publish("/topic/#{report_topic}",eventdetail, {:subject => "Talking to eventbot"})
-                puts eventdetail if options[:debug]
+                do_gitcommand(commandline,rmode,rdir,client,report_topic,sdebug)
               end
 
-              if repo["mode"] == "dangerous"
-
+              if rmode == "dangerous"
                 commandline = "/bin/su - #{guser} -c \"cd #{rdir} && /usr/bin/git checkout origin/master\""
-                puts "Command is #{commandline}" if options[:debug]
-
-                status,stdout,stderr = systemu(commandline, :cwd => rdir, :chomp => true)
-
-                if status != 0
-                  status_message = " problem: " + stderr
-                else
-                  status_message = " checkout: "
-                end
-
-                eventdetail = host_name + status_message + " (#{repo["mode"]})"
-                eventdetail << " #{stdout}" if options[:debug]
-                eventdetail.gsub!(crlf, " ")
-
-                Syslog.info(eventdetail)
-                client.publish("/topic/#{report_topic}",eventdetail, {:subject => "Talking to eventbot"})
-                puts eventdetail if options[:debug]
+                do_gitcommand(commandline,rmode,rdir,client,report_topic,sdebug)
               end
 
-              if repo["mode"] == "trusting"
+              if rmode == "trusting"
                 wdir = repo["target"]
 
                 commandline = "/bin/su - #{guser} -c \"cd #{rdir} && /usr/bin/git --work-tree=#{wdir} checkout -f origin/master\""
-                puts "Command is #{commandline}" if options[:debug]
-
-                status,stdout,stderr = systemu(commandline, :cwd => rdir, :chomp => true)
-
-                if status != 0
-                  status_message = " problem: " + stderr
-                else
-                  status_message = " checkout: "
-                end
-
-                eventdetail = host_name + status_message + " (#{repo["mode"]})"
-                eventdetail << " #{stdout}" if options[:debug]
-                eventdetail.gsub!(crlf, " ")
-
-                Syslog.info(eventdetail)
-                client.publish("/topic/#{report_topic}",eventdetail, {:subject => "Talking to eventbot"})
-                puts eventdetail if options[:debug]
+                do_gitcommand(commandline,rmode,rdir,client,report_topic,sdebug)
               end
-
             else
               eventdetail = "Repo in config but not in filesystem: #{mval}"
-              Syslog.info(eventdetail)
-              client.publish("/topic/#{report_topic}",eventdetail, {:subject => "Talking to eventbot"})
-              puts eventdetail if options[:debug]
+              logmessage(eventdetail,client,report_topic,sdebug)
             end
           end
         end
