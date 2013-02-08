@@ -3,6 +3,24 @@ future-deploykit
 
 A collection of Ruby daemons flying in close formation. AKA our startling message-based deploy environment.
 
+
+What?
+=====
+
+Weblog-based post-hack rationalisation: http://ops.failcake.net/blog/2012/04/19/one-very-important-thought/
+
+More of the same, containing example Jenkins-plumbing: http://ops.failcake.net/blog/2012/04/19/a-hazelnut-in-every-bite/
+ 
+
+Why?
+====
+
+One-click (more or less. Work with me here...) deploys. Jenkins integration. Standard bus. Devops-meccano.
+
+
+Installation.
+=============
+
 Building the mcollective thing: Dump the clients and agent in your mcollective puppet module.
   (On the assumption that you manage your mcollective rig w/puppet.)
 
