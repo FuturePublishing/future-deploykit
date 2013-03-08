@@ -10,13 +10,35 @@ rserver: failover://(stomp://gituser:gitpw@broker01:61613,stomp://gituser:gitpw@
 #
 stomp-options: initialReconnectDelay=0.01&randomize=false&useExponentialBackOff=true&MaxReconnectDelay=30&BackOffMultiplier=2&MaxReconnectAttempts=0&Backup=false&Timeout=-1
 #
-# Topics:
+# Topics: (You should really have your own topic hierarchy)
 listen-topic: future.git.commits
 report-topic: future.events.jenkins
 #
 # Jenkins endpoint
 jenkins-url: http://jenkins.yourorg.com:8080
 #
-# Repos below here
-# repo-name: Jenkins-token
-puppet-environments: MagicJenkinsPassword
+# Jenkins project list.
+# There will be problems when a repo contains multiple Jenkins jobs.
+# And lo, there were problems...
+#
+# It's alleged to work like this:
+# Within jenkins-projects are a sequence of repository tags which contain
+# zero or more projects, each of those having a corresponding Jenkins project
+# name and semi-secret key. If the repository contains but one project, then
+# the Jenkins data is pulled up a level.
+#
+# If that's as clear as mud, you may blame the bright sort who thought it a good
+# idea to have multiple projects in one repository.
+#
+jenkins-projects:
+  my-single-project:
+    project: my-Jenkins-project
+    ticket: MY_SECRET_JENKINS_KEY
+  their-legacy-repo:
+    awful-project:
+      project: awful-jenkins-project
+      ticket: AWFUL_KEY
+    time-sink:
+      project: name%20containing%20spaces
+      ticket: WASTE
+  
