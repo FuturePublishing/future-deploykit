@@ -62,6 +62,7 @@ if pid.nil?
   listen_topic = yconfig["listen-topic"]
   report_topic = yconfig["report-topic"]
   jenkins_url  = yconfig["jenkins-url"]
+  jenkins_projects = yconfig["jenkins-projects"]
 
   client = Stomp::Client.new(stompconnector)
 
@@ -72,40 +73,67 @@ if pid.nil?
     client.subscribe "/topic/#{listen_topic}" do |message|
       if message.body == "\n"
         puts "Bodge-beat frame" if options[:debug]
+        next
       else
-        message.body.each do |mline|
-          mkey,project = mline.split(":",2)
-          if mkey == "repo"
-            ticket = yconfig["#{project.strip}"]
+        svnproject = ""
+        reponame = ""
+        jenkins_job = ""
+        jenkins_ticket = ""
 
-            if ticket.nil?
-              puts "Not our repo: #{project}" if options[:debug]
-              break
-            end
-
-            jenkins = jenkins_url + "/job/" + project.strip + "/build?token=" + ticket
-            uri = URI.parse(jenkins)
-            http = Net::HTTP.new(uri.host, uri.port)
-            response = http.request(Net::HTTP::Get.new(uri.request_uri))
-
-            if options[:debug]
-              puts "Subject: #{message.headers["subject"]}"
-              puts "Message-ID: #{message.headers["message-id"]}"
-              puts "Repo/ticket: #{project.strip}/#{ticket}"
-              puts "--"
-              puts message.body
-              puts "--"
-              puts "URI: #{jenkins}"
-              puts "Response: #{response}"
-              puts "Requested Jenkins build: #{message.headers["subject"]}"
-            end
-
-            eventdetail = "Requested Jenkins build: #{message.headers["subject"]}"
-            Syslog.info(eventdetail)
-            client.publish("/topic/#{report_topic}",eventdetail, {:subject => "Talking to eventbot"})
-          end
+        if options[:debug]
+          puts "Subject: #{message.headers["subject"]}"
+          puts "Message-ID: #{message.headers["message-id"]}"
+          puts "--"
+          puts message.body
+          puts "--"
         end
-      end 
+
+        message.body.each do |mline|
+          mkey,mval = mline.split(":",2)
+
+          reponame = mval.strip if mkey == "repo"
+          svnproject = mval.strip if mkey == "Project"
+        end
+      end
+
+      jproject = jenkins_projects[reponame]
+
+      if jproject.nil?
+        puts "Not our repo: #{reponame}" if options[:debug]
+        next
+      end
+
+      if svnproject
+        sproject = jproject[svnproject]
+        if sproject.nil?
+          puts "Not our SVN project: #{svnproject}" if options[:debug]
+          next
+        else
+          jenkins_job = sproject['project']
+          jenkins_ticket = sproject['ticket']
+        end
+        puts sproject.inspect if options[:debug]
+      else
+        jenkins_job = jproject['project']
+        jenkins_ticket = jproject['ticket']
+      end
+
+      jenkins = jenkins_url + "/job/" + jenkins_job + "/build?token=" + jenkins_ticket
+      uri = URI.parse(jenkins)
+      http = Net::HTTP.new(uri.host, uri.port)
+      response = http.request(Net::HTTP::Get.new(uri.request_uri))
+
+      if options[:debug]
+        puts "Repo/project/ticket: #{reponame}/#{jenkins_job}/#{jenkins_ticket}"
+        puts "URI: #{jenkins}"
+        puts "Response: #{response}"
+        puts "Requested Jenkins build: #{message.headers["subject"]}"
+      end
+  
+      jenkins_syslog = jenkins_job.gsub("%20","_")
+      eventdetail = "Requested Jenkins build: #{message.headers["subject"]} / #{jenkins_syslog}"
+      Syslog.info(eventdetail)
+      client.publish("/topic/#{report_topic}",eventdetail, {:subject => "Talking to eventbot"})
     end
 
     client.join
