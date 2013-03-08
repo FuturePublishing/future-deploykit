@@ -1,0 +1,11 @@
+---
+# YAML!
+rserver: failover://(stomp://gituser:gitpw@broker01:61613,stomp://gituser:gitpw@broker02:61613)
+#
+# Stomp connection options.
+#
+stomp-options: initialReconnectDelay=0.01&randomize=false&useExponentialBackOff=true&MaxReconnectDelay=30&BackOffMultiplier=2&MaxReconnectAttempts=0&Backup=false&Timeout=-1
+#
+# Topics: (These are ours. You should use your own.)
+trigger-topic: future.git.commits
+report-topic: future.events.svnserver
