@@ -42,7 +42,7 @@ Yes this should be a rake task.
 
 puppet-module: Git repo management and stomp-git install/setup.
 
-Server-malarkey: Hook scripts for git.
+Server-malarkey: Hook scripts for git. Also hook script for SVN. I'm sorry.
 
 Stomp-keepalive: Cheap and nasty stomp heartbeat emulator to keep firewalls happy.
   (STOMP 1.0 doesn't do heartbeats. They're in the 1.1 spec, but implemented in a wonky sort of way
