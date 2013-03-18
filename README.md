@@ -23,21 +23,33 @@ Pretty pictures
 Some diagrams of how it works in practice for us.
 
 Developer commits a change to the master git repo, and a post-commit-hook triggers a message to the queue:
+
 ![Developer commits to git repo, message sent to queue](http://slack.org.uk/images/Future-DeployKit/Step_1.png "Step 1")
+
 Jenkins receives the message and runs the appropriate tests, then sends a success or failure message to the queue:
+
 ![Jenkins receives message and runs tests](http://slack.org.uk/images/Future-DeployKit/Step_2.png "Step 2")
+
 The success message is received by all the servers that configuration management has told that they should have that code on them:
+
 ![Successful build message received by servers](http://slack.org.uk/images/Future-DeployKit/Step_3.png "Step 3")
+
 Servers git fetch the latest changes, so that they always have a local copy of the full repo, to reduce dependencies on the central git server for deploys:
+
 ![Servers git fetch from master repo](http://slack.org.uk/images/Future-DeployKit/Step_4.png "Step 4")
 
 Deployment works as follows:
 
 User uses a [lightweight web wrapper](https://github.com/FuturePublishing/deploykit-frontend) to select what tag they want to deploy and to what servers, MCollective client issues a message to the queue:
+
 ![User requests deploy via UI, MCollective client sends message](http://slack.org.uk/images/Future-DeployKit/Deploy_1.png "Deploy Step 1")
+
 MCollective agent receives the message, triggers the deploy process, running pre and post deploy scripts:
+
 ![MCollective agent receives message, triggers deploy](http://slack.org.uk/images/Future-DeployKit/Deploy_2.png "Deploy Step 2")
+
 Other servers deploy if this succeeds, orchestrated by MCollective:
+
 ![Other servers deploy orchestrated by MCollective](http://slack.org.uk/images/Future-DeployKit/Deploy_3.png "Deploy Step 3")
 
 Installation.
