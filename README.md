@@ -17,6 +17,21 @@ Why?
 
 One-click (more or less. Work with me here...) deploys. Jenkins integration. Standard bus. Devops-meccano.
 
+Pretty pictures
+===============
+
+Some diagrams of how it works in practice for us.
+
+![Developer commits to git repo, message sent to queue](http://slack.org.uk/images/Future-DeployKit/Step_1.png "Step 1")
+![Jenkins receives message and runs tests](http://slack.org.uk/images/Future-DeployKit/Step_2.png "Step 2")
+![Successful build message received by servers](http://slack.org.uk/images/Future-DeployKit/Step_3.png "Step 3")
+![Servers git fetch from master repo](http://slack.org.uk/images/Future-DeployKit/Step_4.png "Step 4")
+
+Deployment works as follows:
+
+![User requests deploy via UI, MCollective client sends message](http://slack.org.uk/images/Future-DeployKit/Deploy_1.png "Deploy Step 1")
+![MCollective agent receives message, triggers deploy](http://slack.org.uk/images/Future-DeployKit/Deploy_2.png "Deploy Step 2")
+![Other servers deploy orchestrated by MCollective](http://slack.org.uk/images/Future-DeployKit/Deploy_3.png "Deploy Step 3")
 
 Installation.
 =============
