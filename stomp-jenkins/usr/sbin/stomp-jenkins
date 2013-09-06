@@ -1,4 +1,4 @@
-#!/usr/bin/ruby 
+#!/usr/bin/env ruby
 
 require 'rubygems'
 require 'yaml'
@@ -77,6 +77,8 @@ if pid.nil?
       else
         svnproject = ""
         reponame = ""
+        refname = ""
+        git_ignore_refs = ""
         jenkins_job = ""
         jenkins_ticket = ""
 
@@ -88,11 +90,11 @@ if pid.nil?
           puts "--"
         end
 
-        message.body.each do |mline|
+        message.body.lines do |mline|
           mkey,mval = mline.split(":",2)
-
           reponame = mval.strip if mkey == "repo"
           svnproject = mval.strip if mkey == "Project"
+          refname = mval.strip if mkey == "refname"
         end
       end
 
@@ -103,7 +105,7 @@ if pid.nil?
         next
       end
 
-      if svnproject
+      if svnproject != ""
         sproject = jproject[svnproject]
         if sproject.nil?
           puts "Not our SVN project: #{svnproject}" if options[:debug]
@@ -111,11 +113,21 @@ if pid.nil?
         else
           jenkins_job = sproject['project']
           jenkins_ticket = sproject['ticket']
+          git_ignore_refs = sproject['ignore_refs']
         end
         puts sproject.inspect if options[:debug]
       else
         jenkins_job = jproject['project']
         jenkins_ticket = jproject['ticket']
+        git_ignore_refs = jproject['ignore_refs']
+      end
+
+      # if you want to ignore tags/branches do it here
+      if git_ignore_refs != ""
+        if ( refname =~ /#{git_ignore_refs}/ )
+          puts "refname starts with #{git_ignore_refs} so I will ignore it." if options[:debug]
+          next
+        end
       end
 
       jenkins = jenkins_url + "/job/" + jenkins_job + "/build?token=" + jenkins_ticket

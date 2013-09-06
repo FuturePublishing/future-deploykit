@@ -26,6 +26,8 @@ jenkins-url: http://jenkins.yourorg.com:8080
 # zero or more projects, each of those having a corresponding Jenkins project
 # name and semi-secret key. If the repository contains but one project, then
 # the Jenkins data is pulled up a level.
+# Also. If you have references for which you don't want to trigger the Jenkins
+# job, you can now chuck in a regex to ignore.
 #
 # If that's as clear as mud, you may blame the bright sort who thought it a good
 # idea to have multiple projects in one repository.
@@ -34,6 +36,7 @@ jenkins-projects:
   my-single-project:
     project: my-Jenkins-project
     ticket: MY_SECRET_JENKINS_KEY
+    ignore_refs: refs\/tags\/jenkins-(?:.*)
   their-legacy-repo:
     awful-project:
       project: awful-jenkins-project
