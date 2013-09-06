@@ -63,6 +63,9 @@ Stomp-jenkins: Watch future.git.commits, if a project we care about has been upd
 
 Github-stomp: Sinatra project. Expect a JSON bundle from github. Extract enough bits to generate a repo-update message on $topic.
 
+Stomp-repo: Watch for package-update messages emitted by the Debian package repository. Run apt-get update if a package we're 
+  interested in has a new version. (Not quite enough blind trust to install the thing automatically. That's what puppet/mcollective is for.)
+
 Jenkins-helper: Emit status messages on future.jenkins and future.events.jenkins to the effect that a job has started, failed or succeeded.
   (A better way of doing this would be a STOMP plugin for Jenkins, obviously.)
 
