@@ -1,4 +1,4 @@
-#!/usr/bin/ruby 
+#!/usr/bin/env ruby
 
 require 'rubygems'
 require 'yaml'
@@ -63,17 +63,22 @@ if client
 	if options[:profit]
 		eventdetail = "Complete " + standardsubject
 		status = "Success"
+		jtopic = "future.jenkins.success"
+		
 	end
 
 	if options[:cake]
 		eventdetail = "Fail " + standardsubject
 		status = "Cake"
+		jtopic = "future.jenkins.cake"
 	end
 
-	body = "Repo: #{ENV['JOB_NAME']}\nURL: #{ENV['BUILD_URL']}\nStatus: #{status}\n"
+  gitbranch = ENV['GIT_BRANCH']
+  gitrepo,s1 = gitbranch.split('/',2)
+  body = "Repo: #{gitrepo}\nURL: #{ENV['BUILD_URL']}\nStatus: #{status}\n"
 
 	Syslog.info(eventdetail)
-	client.publish("/topic/future.jenkins",body, {:subject => eventdetail})
+	client.publish("/topic/#{jtopic}",body, {:subject => eventdetail})
 	client.publish("/topic/future.events.jenkins",eventdetail, {:subject => "Talking to eventbot"})
 
 	client.close
