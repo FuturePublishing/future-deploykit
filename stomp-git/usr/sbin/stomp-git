@@ -1,4 +1,4 @@
-#!/usr/bin/ruby 
+#!/usr/bin/env ruby 
 
 require 'rubygems'
 require 'yaml'
@@ -11,7 +11,7 @@ require 'etc'
 
  
 options = {}
-version = "3.2"
+version = "3.4"
 crlf = /(\r\n|\n\r|\r|\n)/
 
 def logmessage(message,sclient,topic,debug)
@@ -103,7 +103,7 @@ if pid.nil?
       if message.body == "\n"
         puts "Bodge-beat frame" if sdebug
       else
-        message.body.each do |mline|
+        message.body.lines do |mline|
         mkey,mval = mline.split(":",2)
           if mkey == "repo"
             repo = repos["#{mval.strip}"]
@@ -154,17 +154,19 @@ if pid.nil?
 
               if rmode == "puppetmaster"
                 s1,s2,s3 = message.headers["subject"].split(' ',3)
-                branch = s2.sub('refs/heads/','')
-                pdir = repo["target"]
-                wdir = pdir + "/" + branch
+                if s2 =~ /refs\/heads\//
+                  branch = s2.sub('refs/heads/','')
+                  pdir = repo["target"]
+                  wdir = pdir + "/" + branch
 
-                if !File.exists?(wdir)
-                  Dir.mkdir(wdir)
-                  File.chown(guser.uid,guser.gid,wdir)
+                  if !File.exists?(wdir)
+                    Dir.mkdir(wdir)
+                    File.chown(guser.uid,guser.gid,wdir)
+                  end
+
+                  commandline = "/bin/su - #{guser} -c \"cd #{rdir} && /usr/bin/git --work-tree=#{wdir} checkout -f origin/#{branch}\""
+                  do_gitcommand(commandline,rmode,rdir,client,report_topic,sdebug)
                 end
-
-                commandline = "/bin/su - #{guser} -c \"cd #{rdir} && /usr/bin/git --work-tree=#{wdir} checkout -f origin/#{branch}\""
-                do_gitcommand(commandline,rmode,rdir,client,report_topic,sdebug)
               end
 
               if rmode == "dangerous"
