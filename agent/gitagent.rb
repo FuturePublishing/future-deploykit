@@ -49,17 +49,10 @@ module MCollective
 
         create_id if request.data[:request_id] == nil
 
-        rconfig = YAML.load_file("/etc/facts.d/facts.yaml")
-        sconfig = YAML.load_file("/etc/git-agent/git-agent.yaml")
+        stompconfig = "/usr/share/mcollective/plugins/mcollective/agent/git-agent.yaml"
+
         host_name = Socket::gethostname
-
-        stompconnector = sconfig["rserver"] + "?" + sconfig["stomp-options"]
-
-        sclient = Stomp::Client.new(stompconnector)
-        if sclient.nil?
-          Log.info("Can't connect to stomp server.")
-        end
-        report_topic = sconfig["report-topic"]
+        rconfig = YAML.load_file("/etc/facts.d/facts.yaml")
 
         lrepo = rconfig["repo_#{request[:repo]}"]
         lsite = rconfig["sitedir_#{request[:repo]}"]
@@ -100,11 +93,19 @@ module MCollective
                 reply[:status] = run("#{postcmd} -t #{request[:tag]}", :stdout => :out, :stderr => :err, :cwd => wdir, :chomp => true)
                 deploylog = "Post-deploy status: #{reply[:status]} stdout: #{reply[:out]} stderr: #{reply[:err]}"
                 Log.info(deploylog)
-                if sclient
-                  eventdetail = "git-agent on #{host_name} checked out tag #{request[:tag]} from repo #{lrepo} to target #{lsite} request id #{request[:request_id]} type #{sitetype}"
-                  Log.info(eventdetail)
-                  sclient.publish("/topic/#{report_topic}",eventdetail, {:subject => "Talking to eventbot"})
-                  sclient.close
+                eventdetail = "git-agent on #{host_name} checked out tag #{request[:tag]} from repo #{lrepo} to target #{lsite} request id #{request[:request_id]} type #{sitetype}"
+                Log.info(eventdetail)
+
+                if File.exists?(stompconfig)
+                  sconfig = YAML.load_file(stompconfig)
+                  stompconnector = sconfig["rserver"] + "?" + sconfig["stomp-options"]
+
+                  report_topic = sconfig["report-topic"]
+                  sclient = Stomp::Client.new(stompconnector)
+                  if sclient
+                    sclient.publish("/topic/#{report_topic}",eventdetail, {:subject => "Talking to eventbot"})
+                    sclient.close
+                  end
                 end
               else
                 reply[:status] = 1
