@@ -1,0 +1,29 @@
+---
+# YAML!
+rserver: failover://(stomp://gituser:gitpw@broker01:61613,stomp://gituser:gitpw@broker02:61613)
+#
+# Stomp connection options.
+#
+stomp-options: initialReconnectDelay=0.01&randomize=false&useExponentialBackOff=true&MaxReconnectDelay=30&BackOffMultiplier=2&MaxReconnectAttempts=0&Backup=false&Timeout=-1
+#
+# What this does:
+# For $distro-list in $incoming-dir, add files found to a Debian repo via the magic of reprepro.
+# Then, as is our wont, emit a message to that effect on future.packages.updates and a different
+# message for eventbot on future.events.repository.
+#
+# Why?
+# Say you've a job that builds a package. Emitting that package to the repo and having it add
+# it to the catalogue automatically is just jenkins + scp (+ cron). You may have further jobs
+# that can be kicked off when that package is updated. They can monitor the future.events.repository
+# topic and take appropriate action.
+#
+# Topics:
+report-topic: future.events.repository
+package-topic: future.package.updates
+#
+incoming-dir:  '/home/jenkins-ci/'
+#
+distro-list:
+  - lenny
+  - squeeze
+  - wheezy
