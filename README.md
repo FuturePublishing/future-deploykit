@@ -69,14 +69,6 @@ Stomp-repo: Watch for package-update messages emitted by the Debian package repo
 Jenkins-helper: Emit status messages on future.jenkins and future.events.jenkins to the effect that a job has started, failed or succeeded.
   (A better way of doing this would be a STOMP plugin for Jenkins, obviously.)
 
-Stomp-git: Watch $topic. If a project we care about had been updated, perform a git fetch on that repo.
-
-	Build: fpm -s dir -t deb -n "stomp-git" -v 2.2 -a all -d "rubygem-systemu" --description "Stomp-listening robot git-updater (Ruby version)" -C ./stomp-git
-
-Systemu is a Beardian module because it makes life more obvious for puppetry.
-Generate same with: fpm -s gem -t deb systemu
-Yes this should be a rake task.
-
 puppet-module: Git repo management and stomp-git install/setup.
 
 Server-malarkey: Hook scripts for git. Also hook script for SVN. I'm sorry.
