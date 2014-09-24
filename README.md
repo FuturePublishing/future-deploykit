@@ -55,13 +55,18 @@ Other servers deploy if this succeeds, orchestrated by MCollective:
 Installation.
 =============
 
-Building the mcollective thing: Dump the clients and agent in your mcollective puppet module.
-  (On the assumption that you manage your mcollective rig w/puppet.)
+[MCollective agent](https://github.com/hirez/mco-gitagent)
+
+[Remote repository updater](https://github.com/hirez/deploykit-stompgit)
+
+[Shiny web front-end](https://github.com/hirez/deploykit-other-frontend)
+
+[Trigger repo updates from Github/Gitlab](https://github.com/hirez/deploykit-gitlab-stomp)
+
+[Bonus: 'Manage' (ht)access remotely](https://github.com/hirez/deploykit-stomp-access)
 
 Stomp-jenkins: Watch future.git.commits, if a project we care about has been updated, prod Jenkins via HTTP to kick off a build.
   (future.git.commits is one of our own topics. Yours should be different.)
-
-Github-stomp: Sinatra project. Expect a JSON bundle from github. Extract enough bits to generate a repo-update message on $topic.
 
 Stomp-repo: Watch for package-update messages emitted by the Debian package repository. Run apt-get update if a package we're 
   interested in has a new version. (Not quite enough blind trust to install the thing automatically. That's what puppet/mcollective is for.)
